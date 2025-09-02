@@ -1,8 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const PDFDocument = require("pdfkit");
+const ExcelJS = require("exceljs");
 const nodemailer = require("nodemailer");
 
+// Nodemailer setup
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT || 587),
@@ -13,35 +14,55 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Ensure directory exists
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-async function generatePDF({ title, fields, filenameBase }) {
-  ensureDir(path.join(__dirname, "../pdfs"));
-  const filePath = path.join(__dirname, "../pdfs", `${filenameBase}.pdf`);
+/**
+ * Append data to an existing Excel file, or create a new one if not present
+ * @param {Object} params
+ * @param {Object} params.data - Key-value pairs of the form submission
+ * @param {string} params.filename - Excel filename (e.g., "contact.xlsx")
+ * @returns {Promise<string>} - path to the Excel file
+ */
+async function appendToExcel({ data, filename }) {
+  ensureDir(path.join(__dirname, "../excels"));
+  const filePath = path.join(__dirname, "../excels", filename);
 
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
-    const stream = fs.createWriteStream(filePath);
-    doc.pipe(stream);
+  const workbook = new ExcelJS.Workbook();
 
-    doc.fontSize(20).text(title, { align: "center" });
-    doc.moveDown();
+  // If file exists, load it; else create new sheet
+  if (fs.existsSync(filePath)) {
+    await workbook.xlsx.readFile(filePath);
+  }
 
-    fields.forEach(([label, value]) => {
-      if (!value) return;
-      doc.fontSize(12).text(`${label}:`);
-      doc.font("Helvetica").text(String(value), { indent: 16 });
-      doc.moveDown(0.6);
+  let sheet = workbook.getWorksheet("Form Submissions");
+  if (!sheet) sheet = workbook.addWorksheet("Form Submissions");
+
+  // Add headers if sheet is empty
+  if (sheet.rowCount === 0) {
+    sheet.addRow(Object.keys(data));
+  }
+
+  // Add the new row
+  sheet.addRow(Object.values(data));
+
+  // Auto-fit column widths
+  sheet.columns.forEach((column) => {
+    let maxLength = 10; // minimum width
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const cellLength = cell.value ? cell.value.toString().length : 0;
+      if (cellLength > maxLength) maxLength = cellLength;
     });
-
-    doc.end();
-    stream.on("finish", () => resolve(filePath));
-    stream.on("error", reject);
+    column.width = maxLength + 5;
   });
+
+  await workbook.xlsx.writeFile(filePath);
+  return filePath;
 }
 
+// Email the admin
 async function emailAdmin({ subject, text, attachments = [] }) {
   try {
     return transporter.sendMail({
@@ -56,4 +77,4 @@ async function emailAdmin({ subject, text, attachments = [] }) {
   }
 }
 
-module.exports = { generatePDF, emailAdmin };
+module.exports = { appendToExcel, emailAdmin };

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ProgramForm = require("../models/programForm");
-const { generatePDF, emailAdmin } = require("../utils/helpers");
+const { appendToExcel, emailAdmin } = require("../utils/helpers");
 
 router.post("/", async (req, res) => {
   try {
@@ -17,24 +17,25 @@ router.post("/", async (req, res) => {
 
     const saved = await ProgramForm.create(payload);
 
-    const pdfPath = await generatePDF({
-      title: "Program Application",
-      filenameBase: `program_${saved._id}`,
-      fields: [
-        ["Full Name", saved.fullName],
-        ["Email", saved.email],
-        ["Confirm Email", saved.confirmEmail],
-        ["Country (code)", saved.country],
-        ["WhatsApp Number", saved.whatsappNumber],
-        ["Preferred Experience", saved.service],
-        ["Submitted At", saved.createdAt?.toISOString()],
-      ],
+    // Append to single Excel sheet
+    const excelPath = await appendToExcel({
+      data: {
+        FullName: saved.fullName,
+        Email: saved.email,
+        ConfirmEmail: saved.confirmEmail,
+        Country: saved.country,
+        WhatsAppNumber: saved.whatsappNumber,
+        PreferredExperience: saved.service,
+        SubmittedAt: saved.createdAt,
+      },
+      filename: "program-submissions.xlsx",
     });
 
+    // Email admin
     await emailAdmin({
       subject: `New Program Form: ${saved.fullName}`,
       text: `A new program form was submitted by ${saved.fullName} (${saved.email}).`,
-      attachments: [{ filename: "program-submission.pdf", path: pdfPath }],
+      attachments: [{ filename: "program-submissions.xlsx", path: excelPath }],
     });
 
     res.status(201).json({ success: true, id: saved._id });

@@ -13,25 +13,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS: allow your frontend origin
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || "http://localhost:3000",
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGIN || "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 // Serve static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/excels", express.static(path.join(__dirname, "excels"))); // serve generated Excel files if needed
 
 // Ensure necessary folders exist
-const ensureDir = (dir) => { 
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); 
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 ensureDir(path.join(__dirname, "uploads"));
-ensureDir(path.join(__dirname, "pdfs"));
+ensureDir(path.join(__dirname, "pdfs"));    // keep for backwards compatibility if needed
+ensureDir(path.join(__dirname, "excels"));  // folder for Excel files
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   });
@@ -42,7 +47,7 @@ app.use("/api/programform", require("./routes/programRoutes"));
 app.use("/api/wocform", require("./routes/wocRoutes"));
 
 // Root route for testing
-app.get("/", (req, res) => res.send("API is running!"));
+app.get("/", (_req, res) => res.send("API is running!"));
 
 // Start server
 const PORT = process.env.PORT || 5000;

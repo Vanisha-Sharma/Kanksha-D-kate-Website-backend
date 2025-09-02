@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const WocForm = require("../models/wocForm");
-const { generatePDF, emailAdmin } = require("../utils/helpers");
+const { appendToExcel, emailAdmin } = require("../utils/helpers");
 
 // Multer setup
 const storage = multer.diskStorage({
@@ -20,7 +20,7 @@ router.post("/", upload.single("videoFile"), async (req, res) => {
   try {
     const body = req.body;
 
-    // Convert transformationAreas if string
+    // Transform arrays if string
     if (typeof body.transformationAreas === "string") {
       try {
         body.transformationAreas = JSON.parse(body.transformationAreas);
@@ -49,30 +49,29 @@ router.post("/", upload.single("videoFile"), async (req, res) => {
       ? saved.transformationAreas.join(", ")
       : undefined;
 
-    const pdfPath = await generatePDF({
-      title: "WOC Testimonial",
-      filenameBase: `woc_${saved._id}`,
-      fields: [
-        ["Type", saved.feedbackType],
-        ["Name", saved.name],
-        ["Email", saved.email],
-        ["Role", saved.role],
-        ["Experience", saved.experience],
-        ["Rating", saved.rating],
-        ["Story (if text)", saved.story],
-        ["Transformation Areas", areas],
-        ["Video File (if any)", saved.videoFile],
-        ["Video Summary", saved.videoSummary],
-        ["Permissions.allowShare", saved.permissions?.allowShare],
-        ["Permissions.showName", saved.permissions?.showName],
-        ["Permissions.keepUpdated", saved.permissions?.keepUpdated],
-        ["Submitted At", saved.createdAt?.toISOString()],
-      ],
+    // Append to single Excel sheet
+    const excelPath = await appendToExcel({
+      data: {
+        Type: saved.feedbackType,
+        Name: saved.name,
+        Email: saved.email,
+        Role: saved.role,
+        Experience: saved.experience,
+        Rating: saved.rating,
+        Story: saved.story,
+        TransformationAreas: areas,
+        VideoFile: saved.videoFile,
+        VideoSummary: saved.videoSummary,
+        Permissions: saved.permissions ? JSON.stringify(saved.permissions) : undefined,
+        SubmittedAt: saved.createdAt,
+      },
+      filename: "woc-submissions.xlsx",
     });
 
-    const attachments = [{ filename: "woc-submission.pdf", path: pdfPath }];
+    const attachments = [{ filename: "woc-submissions.xlsx", path: excelPath }];
     if (req.file) attachments.push({ filename: req.file.originalname, path: req.file.path });
 
+    // Email admin
     await emailAdmin({
       subject: `New WOC (${saved.feedbackType}) from ${saved.name}`,
       text: `A new WOC testimonial was submitted by ${saved.name}.`,
