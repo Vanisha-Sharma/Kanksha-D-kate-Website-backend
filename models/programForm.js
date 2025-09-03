@@ -33,7 +33,7 @@ const programFormSchema = new mongoose.Schema(
         "signature-immersion",
         "flo-stream",
         "organizational",
-        "consultation",
+        "clarity call on whatsapp",
       ],
       required: true,
     },

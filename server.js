@@ -5,14 +5,11 @@ const mongoose = require("mongoose");
 const path = require("path");
 const fs = require("fs");
 
-// Create app
 const app = express();
 
-// Middleware to parse JSON and form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS: allow your frontend origin
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGIN || "http://localhost:3000",
@@ -20,19 +17,18 @@ app.use(
   })
 );
 
-// Serve static files
+// Serve static folders
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/excels", express.static(path.join(__dirname, "excels"))); // serve generated Excel files if needed
+app.use("/excels", express.static(path.join(__dirname, "excels")));
 
 // Ensure necessary folders exist
 const ensureDir = (dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 ensureDir(path.join(__dirname, "uploads"));
-ensureDir(path.join(__dirname, "pdfs"));    // keep for backwards compatibility if needed
-ensureDir(path.join(__dirname, "excels"));  // folder for Excel files
+ensureDir(path.join(__dirname, "excels"));
 
-// Connect to MongoDB
+// MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
@@ -46,9 +42,10 @@ app.use("/api/contactform", require("./routes/contactRoutes"));
 app.use("/api/programform", require("./routes/programRoutes"));
 app.use("/api/wocform", require("./routes/wocRoutes"));
 
-// Root route for testing
+app.use("/api/articles", require("./routes/articles"));
+app.use("/api/auth", require("./routes/auth")); // optional
+
 app.get("/", (_req, res) => res.send("API is running!"));
 
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 API running at http://localhost:${PORT}`));
