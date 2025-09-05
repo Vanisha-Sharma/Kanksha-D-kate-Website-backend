@@ -15,7 +15,12 @@ const contactFormSchema = new mongoose.Schema(
     },
     service: {
       type: String,
-      enum: ["flo-immersion", "flo-stream", "both", "not-sure"],
+      enum: [
+        "flo-immersion",
+        "flo-stream",
+        "services for businesses, institutions and communities",
+        "not-sure",
+      ],
       required: true,
     },
     message: {

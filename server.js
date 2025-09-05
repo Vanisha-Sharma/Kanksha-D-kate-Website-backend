@@ -31,7 +31,7 @@ ensureDir(path.join(__dirname, "excels"));
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
+  .then(() => console.log("✅ Forms MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
